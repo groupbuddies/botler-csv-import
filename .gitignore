@@ -1,0 +1,9 @@
+# Ignore modules folder
+/node_modules
+
+# Ignore npm debug log
+npm-debug.log
+
+# Ignore example files
+*.csv
+

@@ -19,5 +19,9 @@
   "license": "BSD-2-Clause",
   "bugs": {
     "url": "https://github.com/groupbuddies/botler-csv-import/issues"
+  },
+  "dependencies": {
+    "csv": "~0.4.2",
+    "csv-parse": "~0.1.1"
   }
 }
