@@ -1,0 +1,23 @@
+{
+  "name": "botler-csv-importer",
+  "version": "0.0.0",
+  "description": "CSV importer for Botler",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:groupbuddies/botler-csv-import.git"
+  },
+  "keywords": [
+    "botler",
+    "csv",
+    "importer"
+  ],
+  "author": "Benjamim Sonntag <benjamimsonntag@gmail.com>",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/groupbuddies/botler-csv-import/issues"
+  }
+}
