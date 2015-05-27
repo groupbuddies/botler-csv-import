@@ -1,5 +1,7 @@
 var fs = require('fs');
 var parse = require('csv-parse');
+var _ = require('underscore');
+var through2 = require('through2');
 
 var columns = [
   'id',
@@ -15,11 +17,6 @@ var columns = [
   'payment_method'
 ];
 var parser = parse({ 'columns': columns });
-parser.on('readable', function() {
-  while(record = parser.read()) {
-    console.log(record);
-  }
-});
 
 function displayHelp() {
   console.log("Usage: node index.js FILE...");
@@ -27,7 +24,19 @@ function displayHelp() {
 
 function readFile(filename) {
   fs.createReadStream(filename)
-    .pipe(parser);
+    .pipe(parser)
+    .pipe(expenseTransformer())
+    .on('data', function(data) {
+      console.log(data);
+    });
+}
+
+function expenseTransformer() {
+  return through2.obj(function(expense, enc, callback) {
+    filteredExpense = _.omit(expense, ['id', 'amount_w_vat']);
+    this.push(filteredExpense);
+    callback();
+  });
 }
 
 if (process.argv.length > 2) {
