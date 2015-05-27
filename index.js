@@ -1,7 +1,12 @@
 var fs = require('fs');
 var parse = require('csv-parse');
-var _ = require('underscore');
 var through2 = require('through2');
+var request = require('request');
+var _ = require('underscore');
+
+var readAuth = require('./read_auth');
+
+var botlerUrl = "http://localhost:3000/";
 
 var columns = [
   'id',
@@ -18,17 +23,20 @@ var columns = [
 ];
 var parser = parse({ 'columns': columns });
 
-function displayHelp() {
-  console.log("Usage: node index.js FILE...");
-}
+function readExpenseFile(filename, callback) {
+  var expenses = [];
 
-function readFile(filename) {
   fs.createReadStream(filename)
+    .on('error', handleError)
     .pipe(parser)
     .pipe(expenseTransformer())
-    .on('data', function(data) {
-      console.log(data);
-    });
+    .on('data', function(expense) {
+      expenses.push(expense);
+    })
+    .on('end', function() {
+      callback(expenses);
+    })
+    .on('error', handleError);
 }
 
 function expenseTransformer() {
@@ -39,9 +47,44 @@ function expenseTransformer() {
   });
 }
 
+function sendExpenses(auth, expenses) {
+  var requestOptions = {
+    url: botlerUrl + "api/expenses", 
+    auth: auth
+  };
+  expense = expenses.pop();
+  request.post(requestOptions)
+    .form({ 'expense': expense })
+    .on('response', handleResponse);
+}
+
+function handleResponse(err, response) {
+  if(err) handleError(err);
+  if(response.statusCode == 201) {
+    sendExpenses(auth, expenses);
+  }
+  else {
+    console.log("Error sending " + expense.description + ": " + response.statusCode);
+  }
+}
+
+function displayHelp() {
+  console.log("Usage: node index.js FILE...");
+}
+
+function handleError(error) {
+  console.log(error);
+  process.exit(1);
+}
+
 if (process.argv.length > 2) {
   process.argv.slice(2).forEach(function(arg, index) {
-    readFile(arg);
+    readAuth(function(err, auth) {
+      if(err) handleError(err);
+      readExpenseFile(arg, function(expenses) {
+        sendExpenses(auth, expenses);
+      });
+    });
   });
 }
 else {
