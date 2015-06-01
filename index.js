@@ -4,6 +4,7 @@ var through2 = require('through2');
 var request = require('request');
 var _ = require('underscore');
 
+var logger = require('./logger');
 var readAuth = require('./read_auth');
 
 var botlerUrl = "http://localhost:3000/";
@@ -60,10 +61,10 @@ function sendExpenses(requestOptions, expenses) {
 
 function handleResponse(response, requestOptions, current_expense, expenses) {
   if(response.statusCode == 201) {
-    console.log("Sent '" + current_expense.description + "'.");
+    logger.log("Sent '" + current_expense.description + "'.");
   }
   else {
-    console.log("Error sending '" + current_expense.description +
+    logger.log("Error sending '" + current_expense.description +
                 "': " + response.statusCode);
   }
   if(expenses.length > 0) {
@@ -72,20 +73,23 @@ function handleResponse(response, requestOptions, current_expense, expenses) {
 }
 
 function displayHelp() {
-  console.log("Usage: node index.js FILE...");
+  logger.log("Usage: node index.js FILE...");
 }
 
 function handleError(error) {
-  console.log(error);
+  logger.error(error);
   process.exit(1);
 }
 
 if (process.argv.length > 2) {
   readAuth(function(err, auth) {
-    if(err) handleError(err);
+    if(err) {
+      handleError(err);
+      return;
+    }
     process.argv.slice(2).forEach(function(arg, index) {
       readExpenseFile(arg, function(expenses) {
-        console.log("Sending " + expenses.length + " expenses:");
+        logger.log("Sending " + expenses.length + " expenses:");
         var requestOptions = {
           url: botlerUrl + "api/expenses", 
           auth: auth
