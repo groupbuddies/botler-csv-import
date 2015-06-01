@@ -1,61 +1,9 @@
-var fs = require('fs');
-var through2 = require('through2');
-var request = require('request');
-var _ = require('underscore');
-
+var readFiles = require('./read_expense_files.js');
 var parser = require('./expense_parser');
+var transformer = require('./expense_transformer');
+var api = require('./botler_api');
 var logger = require('./logger');
 var readAuth = require('./read_auth');
-
-var botlerUrl = "http://localhost:3000/";
-
-function readExpenseFile(filename, callback) {
-  var expenses = [];
-
-  fs.createReadStream(filename)
-    .on('error', handleError)
-    .pipe(parser)
-    .pipe(expenseTransformer())
-    .on('data', function(expense) {
-      expenses.push(expense);
-    })
-    .on('end', function() {
-      callback(expenses);
-    })
-    .on('error', handleError);
-}
-
-function expenseTransformer() {
-  return through2.obj(function(expense, enc, callback) {
-    filteredExpense = _.omit(expense, ['id', 'category', 'amount_w_vat']);
-    filteredExpense.user_id = 1;
-    this.push(filteredExpense);
-    callback();
-  });
-}
-
-function sendExpenses(requestOptions, expenses) {
-  expense = expenses.pop();
-  request.post(requestOptions)
-    .form({ 'expense': expense })
-    .on('response', function(response) {
-      handleResponse(response, requestOptions, expense, expenses);
-    })
-    .on('error', handleError);
-}
-
-function handleResponse(response, requestOptions, current_expense, expenses) {
-  if(response.statusCode == 201) {
-    logger.log("Sent '" + current_expense.description + "'.");
-  }
-  else {
-    logger.log("Error sending '" + current_expense.description +
-                "': " + response.statusCode);
-  }
-  if(expenses.length > 0) {
-    sendExpenses(requestOptions, expenses);
-  }
-}
 
 function displayHelp() {
   logger.log("Usage: node index.js FILE...");
@@ -66,25 +14,25 @@ function handleError(error) {
   process.exit(1);
 }
 
-if (process.argv.length > 2) {
-  readAuth(function(err, auth) {
-    if(err) {
-      handleError(err);
-      return;
-    }
-    process.argv.slice(2).forEach(function(arg, index) {
-      readExpenseFile(arg, function(expenses) {
-        logger.log("Sending " + expenses.length + " expenses:");
-        var requestOptions = {
-          url: botlerUrl + "api/expenses", 
-          auth: auth
-        };
-        sendExpenses(requestOptions, expenses);
-      });
-    });
+function parseAndSend(err, auth) {
+  if(err) {
+    handleError(err);
+    return;
+  }
+  readFiles(process.argv.slice(2), parser, transformer, logger, handleError,
+            function(expenses) {
+    api.createExpenses(expenses, auth, logger, handleError);
   });
 }
-else {
-  displayHelp();
+
+function main(args) {
+  if (args.length > 2) {
+    readAuth(parseAndSend);
+  }
+  else {
+    displayHelp();
+  }
 }
+
+main(process.argv);
 
