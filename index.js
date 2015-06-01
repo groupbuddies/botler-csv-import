@@ -1,28 +1,13 @@
 var fs = require('fs');
-var parse = require('csv-parse');
 var through2 = require('through2');
 var request = require('request');
 var _ = require('underscore');
 
+var parser = require('./expense_parser');
 var logger = require('./logger');
 var readAuth = require('./read_auth');
 
 var botlerUrl = "http://localhost:3000/";
-
-var columns = [
-  'id',
-  'paid_on',
-  'category',
-  'subcategory',
-  'description',
-  'supplier',
-  'amount',
-  'vat',
-  'amount_w_vat',
-  'cost_center',
-  'payment_method'
-];
-var parser = parse({ 'columns': columns });
 
 function readExpenseFile(filename, callback) {
   var expenses = [];
