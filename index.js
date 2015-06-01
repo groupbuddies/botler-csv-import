@@ -10,7 +10,7 @@ var botlerUrl = "http://localhost:3000/";
 
 var columns = [
   'id',
-  'date',
+  'paid_on',
   'category',
   'subcategory',
   'description',
@@ -41,30 +41,33 @@ function readExpenseFile(filename, callback) {
 
 function expenseTransformer() {
   return through2.obj(function(expense, enc, callback) {
-    filteredExpense = _.omit(expense, ['id', 'amount_w_vat']);
+    filteredExpense = _.omit(expense, ['id', 'category', 'amount_w_vat']);
+    filteredExpense.user_id = 1;
     this.push(filteredExpense);
     callback();
   });
 }
 
-function sendExpenses(auth, expenses) {
-  var requestOptions = {
-    url: botlerUrl + "api/expenses", 
-    auth: auth
-  };
+function sendExpenses(requestOptions, expenses) {
   expense = expenses.pop();
   request.post(requestOptions)
     .form({ 'expense': expense })
-    .on('response', handleResponse);
+    .on('response', function(response) {
+      handleResponse(response, requestOptions, expense, expenses);
+    })
+    .on('error', handleError);
 }
 
-function handleResponse(err, response) {
-  if(err) handleError(err);
+function handleResponse(response, requestOptions, current_expense, expenses) {
   if(response.statusCode == 201) {
-    sendExpenses(auth, expenses);
+    console.log("Sent '" + current_expense.description + "'.");
   }
   else {
-    console.log("Error sending " + expense.description + ": " + response.statusCode);
+    console.log("Error sending '" + current_expense.description +
+                "': " + response.statusCode);
+  }
+  if(expenses.length > 0) {
+    sendExpenses(requestOptions, expenses);
   }
 }
 
@@ -78,11 +81,16 @@ function handleError(error) {
 }
 
 if (process.argv.length > 2) {
-  process.argv.slice(2).forEach(function(arg, index) {
-    readAuth(function(err, auth) {
-      if(err) handleError(err);
+  readAuth(function(err, auth) {
+    if(err) handleError(err);
+    process.argv.slice(2).forEach(function(arg, index) {
       readExpenseFile(arg, function(expenses) {
-        sendExpenses(auth, expenses);
+        console.log("Sending " + expenses.length + " expenses:");
+        var requestOptions = {
+          url: botlerUrl + "api/expenses", 
+          auth: auth
+        };
+        sendExpenses(requestOptions, expenses);
       });
     });
   });
